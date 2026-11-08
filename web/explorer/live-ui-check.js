@@ -7,7 +7,7 @@
 // The harness file is generated from web/explorer/index.html by the same script,
 // so there is no second copy of the UI to drift out of date.
 const { execFileSync } = require('child_process');
-const vm=require('vm'), fs=require('fs');
+const vm=require('vm'), fs=require('fs'), os=require('os'), path=require('path');
 const RPC=process.argv[2]||'http://127.0.0.1:26657/';
 let nonRelative=0;
 
@@ -15,7 +15,7 @@ const sandbox={console,Date,Math,Number,JSON,String,Error,Promise,setTimeout};
 sandbox.globalThis=sandbox;
 sandbox.__fetch=async(u,o)=>{ if(u!==''){nonRelative++;throw new Error('non-relative: '+u);} return fetch(RPC,o); };
 vm.createContext(sandbox);
-const src=fs.readFileSync("/tmp/explorer_harness.js","utf8");
+const src=fs.readFileSync(path.join(os.tmpdir(),"explorer_harness.js"),"utf8");
 vm.runInContext(src,sandbox);
 const api=sandbox.__api, dom=sandbox.__dom;
 if(!api){console.error("no api");process.exit(1);}
