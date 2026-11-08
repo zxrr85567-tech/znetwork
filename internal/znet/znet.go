@@ -80,6 +80,17 @@ type Message struct {
 	Payload []byte
 }
 
+// MessageFilter decides whether a message crosses the wire for one server.
+// inbound reports the direction: true for a message received from the peer,
+// false for a message about to be sent to it. Returning true drops the message
+// silently (the connection stays up, exactly like a black-hole partition).
+//
+// This is a test hook for adversarial-network tests — see
+// internal/znode/partition_test.go. Production servers never install one
+// (nil means every message flows); it is not a protocol feature and no
+// specification constant depends on it.
+type MessageFilter func(p *Peer, inbound bool, typ uint8) bool
+
 // EncodeFrame builds a wire frame for a message.
 func EncodeFrame(typ uint8, payload []byte) ([]byte, error) {
 	if len(payload)+5 > MaxFrame {
@@ -210,11 +221,19 @@ type Peer struct {
 	// other, so they always end up sharing exactly one live connection.
 	Initiator zcrypto.PublicKey
 
+	// srv is the owning server; it grants the peer access to the optional
+	// message filter. Set once at construction, never mutated.
+	srv *Server
+
 	writeMu sync.Mutex
 }
 
-// Send writes a framed message to the peer.
+// Send writes a framed message to the peer. A message the server's filter
+// drops is discarded without touching the socket.
 func (p *Peer) Send(typ uint8, payload []byte) error {
+	if p.srv != nil && p.srv.drop(p, false, typ) {
+		return nil
+	}
 	p.writeMu.Lock()
 	defer p.writeMu.Unlock()
 	_ = p.Conn.SetWriteDeadline(time.Now().Add(DefaultTimeout))
@@ -242,7 +261,28 @@ type Server struct {
 	OnPeerUp   func(p *Peer)
 	OnPeerDown func(p *Peer)
 
+	// filterMu guards filter so a test can install or remove a partition while
+	// connections are live without a data race. Nil filter = all messages flow.
+	filterMu sync.RWMutex
+	filter   MessageFilter
+
 	closed chan struct{}
+}
+
+// SetFilter installs (or, with nil, removes) the server's message filter.
+// It is safe to call while the server is running; see MessageFilter.
+func (s *Server) SetFilter(f MessageFilter) {
+	s.filterMu.Lock()
+	s.filter = f
+	s.filterMu.Unlock()
+}
+
+// drop reports whether a message to or from p must be silently discarded.
+func (s *Server) drop(p *Peer, inbound bool, typ uint8) bool {
+	s.filterMu.RLock()
+	f := s.filter
+	s.filterMu.RUnlock()
+	return f != nil && f(p, inbound, typ)
 }
 
 // NewServer creates a peer manager for a chain.
@@ -316,7 +356,7 @@ func (s *Server) setupInbound(conn net.Conn) {
 		_ = conn.Close()
 		return
 	}
-	p := &Peer{Conn: conn, Handshake: hs, Addr: conn.RemoteAddr().String(), Outbound: false, Initiator: hs.PubKey}
+	p := &Peer{Conn: conn, Handshake: hs, Addr: conn.RemoteAddr().String(), Outbound: false, Initiator: hs.PubKey, srv: s}
 	s.register(p)
 }
 
@@ -337,7 +377,7 @@ func (s *Server) Dial(addr string) (*Peer, error) {
 		_ = conn.Close()
 		return nil, err
 	}
-	p := &Peer{Conn: conn, Handshake: hs, Addr: addr, Outbound: true, Initiator: s.pubkey}
+	p := &Peer{Conn: conn, Handshake: hs, Addr: addr, Outbound: true, Initiator: s.pubkey, srv: s}
 	s.register(p)
 	return p, nil
 }
@@ -395,6 +435,10 @@ func (s *Server) readLoop(p *Peer) {
 		msg, err := ReadMessage(p.Conn)
 		if err != nil {
 			return
+		}
+		if s.drop(p, true, msg.Type) {
+			// Filtered (partition simulation): discard without dispatching.
+			continue
 		}
 		if s.OnMessage != nil {
 			s.OnMessage(p, msg)

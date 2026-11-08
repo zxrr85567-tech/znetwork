@@ -111,7 +111,11 @@ type Engine struct {
 	// catch up instead of waiting for the next timeout.
 	pendingVotes []Vote
 
-	signed map[sigKey]zcrypto.Hash
+	// signed remembers, per (height, round, step, voter), the first vote that
+	// voter cast there — as a FULL vote, so that when a conflicting one arrives
+	// the retained Equivocation evidence carries both signatures and is
+	// independently verifiable (the evidence comment promises exactly that).
+	signed map[sigKey]Vote
 	evid   []Equivocation
 
 	// committed tracks the last commit this engine produced.
@@ -136,7 +140,7 @@ func NewEngine(cfg Config) (*Engine, error) {
 	if cfg.Now == nil {
 		return nil, fmt.Errorf("zconsensus: Now hook required")
 	}
-	return &Engine{cfg: cfg, signed: map[sigKey]zcrypto.Hash{}}, nil
+	return &Engine{cfg: cfg, signed: map[sigKey]Vote{}}, nil
 }
 
 // SetValidatorSet installs the active set and starts a height.
@@ -401,10 +405,10 @@ func (e *Engine) HandleVote(v Vote) (StepResult, error) {
 	}
 	// Equivocation detection happens before the vote is counted.
 	k := sigKey{v.Height, v.Round, v.Step, v.Voter}
-	if prev, ok := e.signed[k]; ok && prev != v.BlockID {
+	if prev, ok := e.signed[k]; ok && prev.BlockID != v.BlockID {
 		e.evid = append(e.evid, Equivocation{
 			Height: v.Height, Round: v.Round, Step: v.Step, Voter: v.Voter,
-			First:  Vote{Height: v.Height, Round: v.Round, Step: v.Step, BlockID: prev, Voter: v.Voter},
+			First:  prev,
 			Second: v,
 		})
 		return out, fmt.Errorf("%w: validator %s", ErrEquivocation, v.Voter.Bech32())
@@ -422,7 +426,7 @@ func (e *Engine) HandleVote(v Vote) (StepResult, error) {
 	if err != nil {
 		return out, err
 	}
-	e.signed[k] = v.BlockID
+	e.signed[k] = v
 
 	if !HasQuorum(power, e.set.TotalPower()) {
 		return out, nil

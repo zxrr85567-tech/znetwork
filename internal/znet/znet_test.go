@@ -277,6 +277,62 @@ func TestTwoServersExchangeMessages(t *testing.T) {
 	}
 }
 
+// TestFilterDropsMessagesBothDirections proves the partition hook: while a
+// filter is installed on both ends, nothing crosses the wire in either
+// direction even though the connection stays up; removing it heals traffic.
+func TestFilterDropsMessagesBothDirections(t *testing.T) {
+	a := NewServer("chain-a", "a", key(t, "fa").PublicKey(), nil)
+	b := NewServer("chain-a", "b", key(t, "fb").PublicKey(), nil)
+	var gotA, gotB int32
+	a.OnMessage = func(p *Peer, m *Message) { atomic.AddInt32(&gotA, 1) }
+	b.OnMessage = func(p *Peer, m *Message) { atomic.AddInt32(&gotB, 1) }
+	if _, err := a.Listen("127.0.0.1:0"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.Listen("127.0.0.1:0"); err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	defer b.Close()
+	peer, err := a.Dial(b.Addr())
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+
+	// Cut: both servers drop every message, both directions.
+	dropAll := func(p *Peer, inbound bool, typ uint8) bool { return true }
+	a.SetFilter(dropAll)
+	b.SetFilter(dropAll)
+	if err := peer.Send(MsgPing, []byte("x")); err != nil {
+		t.Fatalf("send under filter: %v", err)
+	}
+	b.Broadcast(MsgTx, []byte("y"))
+	time.Sleep(150 * time.Millisecond)
+	if g1, g2 := atomic.LoadInt32(&gotA), atomic.LoadInt32(&gotB); g1 != 0 || g2 != 0 {
+		t.Fatalf("filter leaked traffic: a=%d b=%d", g1, g2)
+	}
+	// The connection itself must survive the cut (black hole, not link down).
+	if a.PeerCount() != 1 || b.PeerCount() != 1 {
+		t.Fatalf("connection dropped by filter: a=%d b=%d", a.PeerCount(), b.PeerCount())
+	}
+
+	// Heal: the same messages now flow.
+	a.SetFilter(nil)
+	b.SetFilter(nil)
+	if err := peer.Send(MsgPing, []byte("x")); err != nil {
+		t.Fatalf("send after heal: %v", err)
+	}
+	b.Broadcast(MsgTx, []byte("y"))
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if atomic.LoadInt32(&gotA) >= 1 && atomic.LoadInt32(&gotB) >= 1 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("after heal: a=%d b=%d", atomic.LoadInt32(&gotA), atomic.LoadInt32(&gotB))
+}
+
 func TestHandshakeRejectsWrongChain(t *testing.T) {
 	a := NewServer("chain-a", "a", key(t, "a2").PublicKey(), nil)
 	b := NewServer("chain-b", "b", key(t, "b2").PublicKey(), nil)

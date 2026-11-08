@@ -101,6 +101,13 @@ system.
   `(type, payload)` with a bounded cache; a message is forwarded at most once,
   and never back to the peer it came from. This bounds gossip traffic to
   O(peers × messages) and prevents trivial echo storms.
+- **Test-only message filter.** `Server.SetFilter` installs a hook that
+  silently drops messages in either direction while the connection stays up —
+  a black-hole partition, the capability an on-path attacker has (see
+  `internal/znode/partition_test.go`). Production servers never install one
+  (the default is nil and every message flows). It is not a protocol feature:
+  no wire format, message type, constant or handshake field depends on it, and
+  handshakes are never filtered.
 
 ## Synchronisation
 
