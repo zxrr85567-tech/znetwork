@@ -53,7 +53,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - pkg: ./internal/ztypes
+          - pkg: ./internal/zencoding
             target: FuzzDecode
           - pkg: ./internal/ztypes
             target: FuzzDecodeTx
@@ -69,5 +69,17 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      # Fail loudly if the target does not exist: `go test -fuzz` exits 0 with
+      # "no fuzz tests to fuzz", which would make this job green while testing
+      # nothing. That happened once; this guard makes it impossible.
+      - name: guard ${{ matrix.target }} exists in ${{ matrix.pkg }}
+        run: |
+          found="$(go test -list '^${{ matrix.target }}$' ${{ matrix.pkg }} | grep -c '^${{ matrix.target }}$' || true)"
+          if [ "$found" -ne 1 ]; then
+            echo "::error::${{ matrix.target }} not found in ${{ matrix.pkg }}"
+            exit 1
+          fi
+          echo "found ${{ matrix.target }} in ${{ matrix.pkg }}"
+
       - name: ${{ matrix.target }}
         run: go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime=30s ${{ matrix.pkg }}
