@@ -1,0 +1,24 @@
+4494d8d6e6f29f0c6110efccf8e14aec8fe014f0 2026-11-08T11:12:22Z docs: handover note points at the v1.0.0-rc3 artifacts
+2473c183ec77535f30a6733ac41fd30d49378df8 2026-11-08T11:11:11Z fix(scripts): verify the Go toolchain checksum instead of printing an unused constant
+ce05134ba553ab5cd029afbe1a953c03dc2d6df0 2026-11-08T09:21:41Z docs: make the handover note reference the manifest instead of a fixed commit
+6ff3f87ddc51494d45fa7efbce37bc894bbaefad 2026-11-08T09:21:34Z docs: handover artifacts and dependency-ordered extension guide
+9aff340e4fa507365cadae7b505a02dc8d1e5048 2026-11-08T09:14:43Z docs(deployment): node operations, systemd unit, proxy, monitoring, backups
+e8d9e317d6e067df64ff612e437af3004f164b54 2026-11-08T09:12:51Z docs(readme): entry point with verified capability table and honest status
+f14d8b1b22c8617195f27faad64be3561c1c540b 2026-11-08T09:12:30Z docs(test-report): record post-build package verification
+5cda8bd77cb40b57d9d13a1ce4d8d55d420b076a 2026-11-08T09:10:59Z docs: release manifest template under documentation/
+4b6085b01962b1da163ceeb45b42a71231920eda 2026-11-08T09:10:55Z chore: stop tracking release artifacts
+8bbf6bb05a33053fe2682c342da62d22a4253f05 2026-11-08T09:10:49Z chore: treat releases/ as build output, not source
+efe324dac677fd995ce44da88801232cd2d5b30c 2026-11-08T09:10:42Z fix(zbuild): exclude releases/ from packaging
+e78c3203f70b3e6b2455fa221948c6d29b3ceb97 2026-11-08T09:10:23Z docs: project state, test report, blockers, threat model, registers, log
+4300b7c96aeb8e4a4e5f429834386c1b592f3489 2026-11-08T09:04:43Z docs(spec): full specification set; feat(release): zrelease packager
+97ae3aa045b5136821d5291daf9d73dbc5c0d0f8 2026-11-08T09:00:39Z test(crypto,node): keystore attack tests, chain accessors, tx ordering
+0e1faec16eb46ae22c0b2b292f215a8527edd463 2026-11-08T08:44:29Z feat(rpc,cli,ops): receipts API, delegations CLI, reproducible testnet launcher
+adb3eca29242aad4d71e2c1b7233a7175abcb58f 2026-11-08T08:39:56Z feat(explorer): node-served block explorer with verified UI
+cdc47c2dc71f745728f93a6a5eb8ac467fb52f4a 2026-11-08T08:38:42Z feat(metrics,build): prometheus metrics, reproducible packaging, znd --moniker
+31787759a2a4eb572ac05051f8618f73f79a806a 2026-11-08T08:30:40Z fix(consensus,vm,net,e2e): chain-authoritative engine height; fuzz findings
+3d032d474b636c9f1e268744529c2cd79188726d 2026-11-08T08:07:26Z test(core): fill test gaps in ztypes, zstate, zstore, zmempool, znet
+5915b1cf3af858dde5235a391d7450f78757025b 2026-11-08T08:03:59Z feat(binaries,sdk,e2e): znd node, zwallet, zcli, Go SDK, process-level E2E tests
+56f51a4b858eef3e777508ce30d647ea7b8385eb 2026-11-08T08:00:14Z fix(consensus): lock/polka rules, future-round vote buffering, idempotent commits
+d28368541f7c2d4c3dafc7d6228b346e6b0ee423 2026-11-08T07:56:38Z feat(rpc,indexer): JSON-RPC 2.0 API, reorg-safe indexer, receipt persistence
+02f7b59909f6e0f3b42e98fed286ece16467bb0e 2026-11-08T07:53:08Z feat(net): p2p transport, gossip relay, reconnect loop, multi-node consensus
+4c9e6e9195c2e1632e12b56dbf1813dd4564e776 2026-11-08T07:32:33Z feat(core): execution engine, consensus (BFT), chain pipeline, mempool, node driver

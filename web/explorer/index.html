@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Z NETWORK Explorer</title>
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #121821; --line: #1f2a37; --text: #dfe7f1;
+    --dim: #7d8ea3; --accent: #4cc2a0; --warn: #e0a13c; --err: #e06c75;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  header { padding: 16px 20px; border-bottom: 1px solid var(--line);
+           display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 16px; margin: 0; letter-spacing: .14em; text-transform: uppercase; }
+  h1 span { color: var(--accent); }
+  .badge { font-size: 11px; padding: 2px 8px; border: 1px solid var(--warn);
+           color: var(--warn); border-radius: 999px; letter-spacing: .08em; }
+  main { padding: 20px; max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .card .k { font-size: 11px; color: var(--dim); letter-spacing: .09em; text-transform: uppercase; }
+  .card .v { font-family: var(--mono); font-size: 15px; margin-top: 4px; word-break: break-all; }
+  h2 { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim);
+       margin: 6px 0 -6px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 500; font-size: 11px; letter-spacing: .08em;
+       text-transform: uppercase; }
+  tbody tr:hover { background: #17202b; }
+  a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  a:hover { text-decoration: underline; }
+  input { background: #0e141b; border: 1px solid var(--line); color: var(--text);
+          border-radius: 6px; padding: 8px 10px; font-family: var(--mono); font-size: 13px;
+          width: 100%; max-width: 560px; }
+  button { background: var(--accent); color: #06231b; border: 0; border-radius: 6px;
+           padding: 8px 14px; font-weight: 600; cursor: pointer; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .empty, .err { color: var(--dim); font-style: italic; padding: 10px 2px; }
+  .err { color: var(--err); font-style: normal; }
+  .pill { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); }
+  .pill.ok { color: var(--accent); border-color: var(--accent); }
+  .pill.pending { color: var(--warn); border-color: var(--warn); }
+  .kv { display: grid; grid-template-columns: 190px 1fr; gap: 4px 12px; font-size: 13px; }
+  .kv dt { color: var(--dim); font-size: 12px; }
+  .kv dd { margin: 0; font-family: var(--mono); word-break: break-all; }
+  footer { color: var(--dim); font-size: 12px; padding: 8px 20px 28px; max-width: 1180px;
+           margin: 0 auto; }
+  .short { color: var(--dim); }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f6f8fa; --panel:#fff; --line:#d8dee4; --text:#1f2328; --dim:#65707b; }
+    tbody tr:hover { background:#eef2f6; } input { background:#fff; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Z <span>NETWORK</span> Explorer</h1>
+  <span class="badge">DEVELOPMENT / TESTNET — NOT MAINNET</span>
+  <span id="chainLabel" class="short"></span>
+</header>
+
+<main>
+  <section class="grid" id="head"></section>
+
+  <section class="card">
+    <h2>Look up</h2>
+    <div class="row" style="margin-top:10px">
+      <input id="q" placeholder="block height, block hash, transaction id, or z1… address">
+      <button id="go">Search</button>
+    </div>
+    <div id="qmsg" class="err" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Latest blocks</h2>
+    <table>
+      <thead><tr><th>Height</th><th>Hash</th><th>Age</th><th>Txs</th><th>Gas used</th><th>Proposer</th></tr></thead>
+      <tbody id="blocks"><tr><td colspan="6" class="empty">loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section class="card" id="detailCard" hidden>
+    <h2 id="detailTitle">Detail</h2>
+    <dl class="kv" id="detail" style="margin-top:10px"></dl>
+  </section>
+</main>
+
+<footer>
+  Data comes from this node's JSON-RPC endpoint on the same origin. This explorer is
+  part of the development/testnet build; it has no write access and holds no keys.
+</footer>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const short = (h) => (h && h.length > 18) ? h.slice(0, 10) + "…" + h.slice(-6) : (h || "—");
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let rpcId = 1;
+
+async function rpc(method, params) {
+  const body = { jsonrpc: "2.0", id: rpcId++, method };
+  if (params !== undefined) body.params = params;
+  const res = await fetch("", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const out = await res.json();
+  if (out.error) throw new Error(out.error.message || "rpc error");
+  return out.result;
+}
+
+function age(ms) {
+  if (!ms) return "—";
+  const d = Math.max(0, Date.now() - ms);
+  if (d < 1000) return d + " ms ago";
+  if (d < 60000) return Math.floor(d / 1000) + " s ago";
+  if (d < 3600000) return Math.floor(d / 60000) + " min ago";
+  return Math.floor(d / 3600000) + " h ago";
+}
+
+function card(k, v) {
+  return `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`;
+}
+
+async function loadHead() {
+  try {
+    const c = await rpc("z_chainInfo");
+    $("chainLabel").textContent = `chain ${c.chain_id} · genesis ${short(c.genesis_hash)}`;
+    document.title = `Z NETWORK Explorer — ${c.chain_id}`;
+    $("head").innerHTML =
+      card("Height", c.height) +
+      card("Head hash", short(c.head_hash)) +
+      card("Supply", (Number(c.supply_uz) / 1e8).toLocaleString(undefined, {maximumFractionDigits: 2}) + " Z") +
+      card("Protocol", c.protocol);
+  } catch (e) {
+    $("head").innerHTML = card("Node", "unreachable: " + e.message);
+  }
+}
+
+async function loadBlocks() {
+  try {
+    const head = await rpc("z_getHeight");
+    const h = typeof head === "object" ? head.height : head;
+    const from = Math.max(0, Number(h) - 9);
+    const list = await rpc("z_getBlocks", { from, limit: 10 });
+    const rows = (list || []).slice().reverse().map(b => `
+      <tr>
+        <td><a data-kind="block" data-v="${b.height}">${b.height}</a></td>
+        <td>${esc(short(b.hash))}</td>
+        <td class="short">${esc(age(b.time_ms))}</td>
+        <td>${b.tx_count}</td>
+        <td>${b.gas_used} / ${b.gas_limit}</td>
+        <td>${esc(short(b.proposer))}</td>
+      </tr>`).join("");
+    $("blocks").innerHTML = rows || `<tr><td colspan="6" class="empty">no blocks yet</td></tr>`;
+  } catch (e) {
+    $("blocks").innerHTML = `<tr><td colspan="6" class="err">${esc(e.message)}</td></tr>`;
+  }
+}
+
+function showDetail(title, pairs) {
+  $("detailCard").hidden = false;
+  $("detailTitle").textContent = title;
+  $("detail").innerHTML = pairs.map(([k, v]) =>
+    `<dt>${esc(k)}</dt><dd>${v === null || v === undefined ? "—" : esc(v)}</dd>`).join("");
+}
+
+async function showBlock(v) {
+  try {
+    const b = await rpc("z_getBlock", { height: Number(v) });
+    const links = (b.tx_ids || []).length
+      ? b.tx_ids.map(id => `<a data-kind="tx" data-v="${esc(id)}">${esc(short(id))}</a>`).join("<br>")
+      : "—";
+    showDetail(`Block ${b.height}`, [
+      ["Hash", b.hash], ["Previous", b.prev_hash], ["Time", new Date(b.time_ms).toISOString()],
+      ["Proposer", b.proposer], ["Transactions", b.tx_count], ["Gas", b.gas_used + " / " + b.gas_limit],
+      ["State root", b.state_root], ["Tx root", b.tx_root], ["Receipt root", b.receipt_root],
+      ["Validators hash", b.validators_hash], ["Commit signatures", b.commit_sigs],
+    ]);
+    $("detail").insertAdjacentHTML("beforeend", `<dt>Tx ids</dt><dd>${links}</dd>`);
+  } catch (e) { $("qmsg").hidden = false; $("qmsg").textContent = e.message; }
+}
+
+async function showTx(id) {
+  try {
+    const t = await rpc("z_getTransaction", { id });
+    const pairs = [
+      ["Status", t.status], ["Height", t.height], ["Sender", t.sender], ["Nonce", t.nonce],
+      ["Type", t.type], ["Fee (uz)", t.fee_uz], ["Gas limit", t.gas_limit],
+      ["Gas price", t.gas_price], ["Memo", t.memo], ["Time", t.time_ms ? new Date(t.time_ms).toISOString() : "—"],
+      ["Payload (hex)", t.payload],
+    ];
+    if (t.receipt) {
+      pairs.push(["Execution", t.receipt.status === 0 ? "success" : "reverted"],
+                 ["Gas used", t.receipt.gas_used],
+                 ["Events", (t.receipt.events || []).length]);
+    }
+    showDetail(`Transaction ${short(id)}`, pairs);
+  } catch (e) { $("qmsg").hidden = false; $("qmsg").textContent = e.message; }
+}
+
+async function showAccount(addr) {
+  try {
+    const a = await rpc("z_getAccount", { address: addr });
+    showDetail(`Account ${short(addr)}`, [
+      ["Address", a.address], ["Balance", a.balance_z + " Z"], ["Balance (uz)", a.balance_uz],
+      ["Nonce", a.nonce], ["Contract", a.is_contract ? "yes" : "no"],
+      ["Code hash", a.code_hash], ["Created height", a.created_height],
+    ]);
+  } catch (e) { $("qmsg").hidden = false; $("qmsg").textContent = e.message; }
+}
+
+document.addEventListener("click", (ev) => {
+  const a = ev.target.closest("a[data-kind]");
+  if (!a) return;
+  ev.preventDefault();
+  $("qmsg").hidden = true;
+  const kind = a.dataset.kind, v = a.dataset.v;
+  if (kind === "block") showBlock(v);
+  if (kind === "tx") showTx(v);
+});
+
+$("go").addEventListener("click", async () => {
+  const v = $("q").value.trim();
+  $("qmsg").hidden = true; $("qmsg").textContent = "";
+  if (!v) return;
+  if (/^\d+$/.test(v)) return showBlock(v);
+  if (/^[0-9a-fA-F]{64}$/.test(v)) {
+    try { await rpc("z_getBlockByHash", { hash: v.toLowerCase() }); return showBlock(v); }
+    catch (_) { return showTx(v.toLowerCase()); }
+  }
+  if (/^z1[02-9ac-hj-np-z]{20,}$/.test(v)) return showAccount(v);
+  $("qmsg").hidden = false;
+  $("qmsg").textContent = "expected a block height, a 64-char hex hash, or a z1… address";
+});
+
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
+
+async function refresh() {
+  await loadHead();
+  await loadBlocks();
+}
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build + vet + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Go version comes from go.mod (1.24); no third-party modules to cache.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l internal cmd)"
+          if [ -n "$unformatted" ]; then
+            echo "unformatted files:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test -count=1 -timeout 600s ./...
+
+      - name: coverage
+        run: go test -count=1 -timeout 600s -coverprofile=cover.out ./...
+
+      - name: race detector
+        run: go test -count=1 -race -timeout 900s ./...
+        env:
+          CGO_ENABLED: 1
+
+  fuzz-smoke:
+    name: fuzz smoke (30s per target)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pkg: ./internal/ztypes
+            target: FuzzDecode
+          - pkg: ./internal/ztypes
+            target: FuzzDecodeTx
+          - pkg: ./internal/zmerkle
+            target: FuzzProofDecode
+          - pkg: ./internal/zvm
+            target: FuzzRun
+          - pkg: ./internal/znet
+            target: FuzzReadMessage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: ${{ matrix.target }}
+        run: go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime=30s ${{ matrix.pkg }}

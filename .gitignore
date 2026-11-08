@@ -1,0 +1,6 @@
+data/
+*.log
+*.zip
+bin/
+.DS_Store
+releases/
