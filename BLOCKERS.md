@@ -13,17 +13,23 @@ operability gap; **B4** = environment limitation.
 
 ---
 
-## B-001 — No GitHub remote (B4)
+## B-001 — No GitHub remote (B4) — CLOSED 2026-11-08
 
-`git remote -v` is empty and no authorized GitHub connector exists in this
-environment. All work is committed locally in 12 commits. Consequences:
+**Closing evidence:** the repository is pushed to
+`https://github.com/zxrr85567-tech/znetwork` (`origin/main`, merge commit
+recorded in `git log`), with `.github/workflows/ci.yml` running gofmt, vet,
+build, test, coverage, race and fuzz-smoke gates on every push. The credential
+used for the push is held by the workspace git configuration / environment
+only — it is never stored in a tracked file.
 
-- no CI runs on push, no protected-branch review, no release hosting;
-- "published" is **never** claimed for anything in this repository;
-- the deliverable is the local git history plus the reproducible zip package.
+Remaining consequences to be honest about:
 
-*Unblocked by:* connecting an authorized GitHub connector and pushing, which
-requires the account owner's credentials. Not attempted.
+- no protected-branch review process (single-operator repository);
+- release hosting still local (`releases/` is gitignored build output);
+- "published" still **never** claimed for anything beyond the source and CI
+  evidence.
+
+*Reopened if:* the remote disappears or CI is removed.
 
 ## B-002 — No external audit (B1)
 

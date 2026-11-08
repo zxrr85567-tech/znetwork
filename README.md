@@ -119,7 +119,14 @@ The system is real, integrated, tested and reproducible — and it is a testnet,
 because it has no audit, no transport encryption, no slashing and no production
 storage layer, all of which are documented rather than glossed over.
 
+## For AI agents
+
+This repository is maintained by AI agent sessions. Agents start at
+[AGENTS.md](AGENTS.md): it defines the role prompts (lead, implementer,
+verifier, reviewer, archivist) under [`prompts/`](prompts/), the shared
+constitution, and the definition of done. Do not write code in this repo
+without loading them.
+
 ## License
 
-No license file is included in this build. Add one before distributing, or treat
-the code as all-rights-reserved until then.
+MIT — see [LICENSE](LICENSE).

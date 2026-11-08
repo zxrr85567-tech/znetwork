@@ -3,7 +3,8 @@
 **As of:** 2026-11-08
 **Version:** v1.0.0-rc1
 **Status:** development / testnet. **Not Mainnet. Not audited.**
-**Repository:** local git, `<repo>` (no remote — BLOCKERS.md B-001)
+**Repository:** `github.com/zxrr85567-tech/znetwork` (remote added 2026-11-08 —
+see BLOCKERS.md B-001, closed)
 
 ---
 
