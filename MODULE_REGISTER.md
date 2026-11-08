@@ -37,8 +37,8 @@ Module: `znetwork` · Go 1.24 · **zero third-party dependencies** · 25 package
 | Package | Owns | Depends on | Tests | Coverage | State |
 |---|---|---|---|---|---|
 | `internal/zconsensus` | validator sets, vote sets, locking, propose/prevote/precommit, commit certificates, proposer selection | zcrypto, ztypes | 18 | 77.5% | complete |
-| `internal/znet` | TCP framing, handshake, message codecs, gossip dedup, reconnect | zconsensus, zcrypto, zencoding, ztypes | 13 + fuzz | 79.0% | complete (no transport crypto) |
-| `internal/znode` | chain pipeline, block production, sync, consensus driver, receipt retention | zconsensus, zcrypto, zexec, zmempool, zmerkle, zmetrics, znet, zstate, zstore, ztypes | 19 | 72.5% | complete |
+| `internal/znet` | TCP framing, handshake, message codecs, gossip dedup, reconnect, test-only message filter (`SetFilter`) | zconsensus, zcrypto, zencoding, ztypes | 14 + fuzz | 79.4% | complete (no transport crypto) |
+| `internal/znode` | chain pipeline, block production, sync, consensus driver, receipt retention, adversarial partition harness | zconsensus, zcrypto, zexec, zmempool, zmerkle, zmetrics, znet, zstate, zstore, ztypes | 18 | 73.5% | complete |
 | `internal/zmempool` | admission, nonce windows, replacement, eviction, selection | zstate, ztypes | 12 | 76.2% | complete |
 
 ## Interfaces
@@ -64,6 +64,7 @@ Module: `znetwork` · Go 1.24 · **zero third-party dependencies** · 25 package
 | Path | Owns | State |
 |---|---|---|
 | `internal/e2e` | builds real binaries, drives real processes (lifecycle, restart, two-node network) | complete |
+| `internal/znode/partition_test.go` | adversarial harness: black-hole partition, Byzantine conflicting-vote injection over the wire, heal (N-01) | complete (20× `-race`) |
 | `web/explorer/` | single-file explorer UI, harness generator, live UI check | complete |
 | `scripts/` | env, quality gates, fuzz campaign, testnet launcher, release, toolchain bootstrap | complete |
 

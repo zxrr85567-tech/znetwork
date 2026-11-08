@@ -153,9 +153,41 @@ output; anything that did not run is labelled as such.
 
 ---
 
+## Phase 15 — Agent prompt system and adversarial harness (2026-11-08, Arena sessions)
+
+- Added `AGENTS.md` + `prompts/` (shared constitution, lead / implementer /
+  verifier / reviewer / archivist role prompts, task-card template) and pushed
+  them: `origin/main` now exists, CI (gofmt, vet, build, test, coverage, race,
+  fuzz smoke) green on every push — **B-001 closed** with evidence.
+- **N-01 done.** `internal/znode/partition_test.go` +
+  `znet.Server.SetFilter` (test hook, nil in production):
+  - partition {0,1}|{2,3} on a live 4-validator line network: drop counter
+    proves the cut engaged; neither group advances a height (no 2/3 power);
+    no fork at any common height;
+  - byzantine peer speaks the real `MsgVote` wire path with conflicting
+    prevotes signed by validator 0: all four engines record evidence whose
+    both votes verify independently; a fresh conflicting pair is rejected
+    with `ErrEquivocation` **before** the power is added; forged block ids
+    never appear in any chain;
+  - heal: all four converge past the stall on one consistent chain;
+    connections survived (black hole, not link down).
+- Evidence-quality fix found by the harness: `Equivocation.First` retained
+  only a block id although the comment promised self-contained evidence —
+  `Engine.signed` now stores the full first vote (no consensus rule, wire
+  format or counting change).
+- Measured: 20/20 consecutive `-race` runs of the harness (123.9 s),
+  `quality-gates.sh --full` green, 218 tests, 63.3% coverage, `go.mod`
+  untouched (zero dependencies).
+- Honest limits of this phase: single host; application-layer drops, not
+  packet loss; one Byzantine validator, not adaptive; no encryption (B-003),
+  no slashing (B-004).
+
+---
+
 ## Things that did not happen (stated plainly)
 
-- No GitHub push: no connector, no remote (B-001).
+- No GitHub push: no connector, no remote (B-001) — *superseded 2026-11-08:
+  the repository now has a GitHub remote with green CI; B-001 closed.*
 - No external audit (B-002).
 - No slashing, no transport encryption, no disk-backed state, no light client.
 - No soak test, no load test, no measured TPS.

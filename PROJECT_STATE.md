@@ -18,9 +18,11 @@ store, a transaction index, a JSON-RPC API with 24 methods, a Go SDK, three
 command-line tools, a node-served block explorer, Prometheus metrics,
 reproducible packaging, and a specification set that matches the code. It runs a
 4-validator local testnet, commits real transactions end to end, survives
-restarts, and passes its full test, race and fuzz suites. It is explicitly a
-development/testnet release: it has no external audit, no transport encryption,
-no slashing, and no disk-backed state database.
+restarts, passes its full test, race and fuzz suites, and survives its own
+adversarial harness — a live network partitioned, fed conflicting votes by a
+Byzantine peer, and healed (NEXT_ACTIONS N-01, closed 2026-11-08). It is
+explicitly a development/testnet release: it has no external audit, no
+transport encryption, no slashing, and no disk-backed state database.
 
 ## 2. Verified capability matrix
 
@@ -32,6 +34,7 @@ no slashing, and no disk-backed state database.
 | Two-process network agreement | working | `TestTwoNodeNetwork` |
 | Full-node sync + re-execution | working | `TestNonValidatorNodeSyncsFromNetwork` |
 | Restart recovery without genesis | working | `TestSingleNodeFullLifecycle` |
+| Adversarial partition + Byzantine equivocation | working | `TestAdversarialPartitionHarness` ×20 `-race` (2026-11-08, commit `16d000a`) |
 | Smart contracts (deploy + call) | working, single-frame | live deploy with receipt events |
 | Staking: delegate / undelegate / unbonding | working | live decode + `z_getDelegations` |
 | Governance: propose / vote / tally | working | live proposal with yes vote recorded |
@@ -51,12 +54,12 @@ no slashing, and no disk-backed state database.
 | Metric | Value |
 |---|---|
 | Go packages | 25 (22 internal, 4 commands) |
-| Go source files / lines | 67 files, ~21,950 lines (including tests) |
-| Test functions | 216 |
-| Statement coverage | 63.2% overall |
+| Go source files / lines | 68 files, ~22,450 lines (including tests) |
+| Test functions | 218 |
+| Statement coverage | 63.3% overall |
 | Fuzz targets / campaign | 5 targets, 3,726,218 executions, 0 crashes |
 | Race suite | 18/18 packages clean, 0 data races |
-| Git commits | 12 at the time of measurement (packaging commit follows) |
+| Git commits | 5 on `origin/main` since the GitHub import (12 pre-import locally — `HISTORY.provenance.txt`) |
 | Live network | 4 validators, 600 ms blocks, 143 blocks in one run |
 | Transactions verified live | 7 (transfer ×2, delegate, undelegate, deploy, propose, vote) |
 | Release package | ~265 KB zip, 97 tracked files |

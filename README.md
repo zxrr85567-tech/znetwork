@@ -51,6 +51,7 @@ scripts/testnet.sh down
 | 4-validator BFT consensus over TCP | `internal/znode/multinode_test.go`, live testnet |
 | Full transaction lifecycle: sign → mempool → block → state → index → explorer | `internal/e2e` with real binaries and processes |
 | Restart recovery without a genesis file | `TestSingleNodeFullLifecycle` |
+| Adversarial partition + Byzantine equivocation | `TestAdversarialPartitionHarness` ×20 `-race` |
 | Smart contracts (deploy + call, events in receipts) | live deploy with `contract_deployed` receipt |
 | Staking: delegate, undelegate, time-based unbonding | live run, `z_getDelegations` |
 | Governance: propose, vote, quorum tally, parameter change | live run, `z_getProposal` |

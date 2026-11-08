@@ -10,6 +10,27 @@ Every number below was produced by a command in this session and is reproducible
 with the scripts named. Nothing here is projected or estimated; where a result was
 not measured, it says so.
 
+> **Addendum 2026-11-08 (commit `16d000a` + doc commit): adversarial harness
+> (N-01).** Fresh measurements from this session:
+>
+> | Gate | Result |
+> |---|---|
+> | `TestAdversarialPartitionHarness` ×20, `-race` | **PASS** — 20/20 (123.9 s total) |
+> | `go test -race ./internal/znet ./internal/znode ./internal/zconsensus` | **PASS**, 0 races |
+> | `scripts/quality-gates.sh --full` | **ALL GATES PASSED** |
+> | Test functions | **218** (was 216; +`TestFilterDropsMessagesBothDirections`, +`TestAdversarialPartitionHarness`) |
+> | Statement coverage | **63.3%** (was 63.2%) |
+> | `git diff main -- go.mod` | empty — zero dependencies preserved |
+>
+> The harness proves, on a live network: safety under a black-hole partition
+> (no height advance, no fork), Byzantine equivocation over the real wire path
+> (evidence recorded on all four nodes, second vote rejected with
+> `ErrEquivocation` before counting, forged blocks never adopted), and liveness
+> after heal. Scope limits are honest: one host, application-layer drops only,
+> no real packet loss or transport encryption (B-003). The rc1 numbers below
+> are unchanged since their original run except where this addendum states
+> otherwise.
+
 ---
 
 ## 1. Summary
@@ -241,9 +262,13 @@ Being explicit about coverage gaps is part of the report, not an omission:
 1. **No long-duration soak test.** The longest continuous run was ~143 blocks
    (≈90 s at 600 ms). Days of operation, memory growth and log rotation are
    untested.
-2. **No network partition or Byzantine node in the automated suite.** The
-   consensus engine has unit tests for conflicting votes and locking, but no test
-   actively partitions a live 4-node network and asserts recovery.
+2. ~~No network partition or Byzantine node in the automated suite.~~
+   **Closed 2026-11-08** by `TestAdversarialPartitionHarness` (see the addendum
+   at the top): a live 4-node network is partitioned, attacked with
+   conflicting votes from a byzantine peer, and healed. Residual gaps within
+   this area: single host only (no clock skew / real latency), application-layer
+   drops rather than packet loss, and one Byzantine validator out of four (not
+   adaptive/multi-node Byzantine behaviour).
 3. **No slashing tests, because slashing does not exist** (BLOCKERS.md B-007).
 4. **No adversarial P2P fuzzing.** Framing and codecs are fuzzed; a stateful peer
    that mixes valid and invalid messages is not.

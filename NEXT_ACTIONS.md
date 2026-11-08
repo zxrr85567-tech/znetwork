@@ -5,22 +5,25 @@ started without re-deriving context. Nothing here is in progress right now.
 
 ---
 
-## N-01 — Automated adversarial network test (highest value / lowest cost)
+## N-01 — Automated adversarial network test (highest value / lowest cost) — DONE 2026-11-08
 
-**Why:** consensus safety and liveness are verified by unit tests and by happy-path
-multi-node runs, but no test actively partitions a live network or runs a Byzantine
-validator.
+**Closing evidence:** `internal/znode/partition_test.go`
+(`TestAdversarialPartitionHarness`, card in `prompts/cards/`) drives a live
+4-validator network through all three scenarios: (1) a black-hole partition of
+{0,1}|{2,3} via the new `znet.Server.SetFilter` hook — no height advances and
+no fork appears while neither group holds 2/3 power; (3) a byzantine peer feeds
+conflicting prevotes signed by validator 0 over the real wire path — every
+node records independently verifiable evidence, a fresh conflicting pair is
+rejected with `ErrEquivocation` before counting, and no chain ever contains a
+forged block; (2) after healing, all four converge past the stall on one
+consistent chain. **20 consecutive `-race` runs passed** (123.9 s total,
+commit `16d000a`); `scripts/quality-gates.sh --full` green (218 tests,
+63.3% coverage). One evidence-quality fix rode along: `Equivocation.First`
+now retains the full signed vote (it previously kept only the block id).
 
-**First step:** extend `internal/znode/multinode_test.go` with a `znet.Server`
-wrapper that can drop messages to a chosen peer, then:
-
-1. partition two of four validators and assert no validator commits two different
-   blocks at one height (safety under partition);
-2. heal the partition and assert all four converge within N rounds (liveness);
-3. feed one validator conflicting votes and assert its power is never counted twice
-   and that honest nodes do not adopt the conflicting block.
-
-**Done when:** the three scenarios pass 20 consecutive `-race` runs.
+**Remaining gap (honest):** single-host only — no real latency, clock skew or
+independent operators (see N-10); the filter exercises an application-layer
+drop, not actual packet loss (transport encryption remains B-003).
 
 ## N-02 — Slashing with evidence (BLOCKERS B-004)
 
