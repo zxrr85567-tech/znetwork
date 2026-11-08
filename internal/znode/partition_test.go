@@ -333,18 +333,28 @@ func TestAdversarialPartitionHarness(t *testing.T) {
 	// a different block id from the same validator at the same
 	// (height, round, step) — must be rejected with ErrEquivocation, which
 	// happens before the vote is added to the set, so the validator's power
-	// can never be counted twice.
+	// can never be counted twice. Retried because a round timeout landing
+	// between the Round() read and HandleVote silently ignores stale-round
+	// votes (they return nil, not an error).
 	target := h.nodes[1]
 	eng := target.Engine()
-	height := target.Chain().Height() + 1
-	round := eng.Round()
-	vC := forgePrevote(t, h.net.ChainID, val0Key, height, round, zconsensus.SetBlockID(height, rawC))
-	vD := forgePrevote(t, h.net.ChainID, val0Key, height, round, zconsensus.SetBlockID(height, rawD))
-	if _, err := eng.HandleVote(vC); err != nil && !errors.Is(err, zconsensus.ErrEquivocation) {
-		t.Fatalf("scenario 3: first fresh vote: %v", err)
-	}
-	if _, err := eng.HandleVote(vD); !errors.Is(err, zconsensus.ErrEquivocation) {
-		t.Fatalf("scenario 3: second conflicting vote must be rejected as equivocation, got: %v", err)
+	syncDeadline := time.Now().Add(10 * time.Second)
+	for {
+		height := target.Chain().Height() + 1
+		round := eng.Round()
+		vC := forgePrevote(t, h.net.ChainID, val0Key, height, round, zconsensus.SetBlockID(height, rawC))
+		vD := forgePrevote(t, h.net.ChainID, val0Key, height, round, zconsensus.SetBlockID(height, rawD))
+		if _, err := eng.HandleVote(vC); err != nil && !errors.Is(err, zconsensus.ErrEquivocation) {
+			t.Fatalf("scenario 3: first fresh vote: %v", err)
+		}
+		_, errD := eng.HandleVote(vD)
+		if errors.Is(errD, zconsensus.ErrEquivocation) {
+			break // the second conflicting vote was rejected before counting
+		}
+		if time.Now().After(syncDeadline) {
+			t.Fatalf("scenario 3: second conflicting vote must be rejected as equivocation, got: %v", errD)
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
 	if evidenceCount(eng.Evidence(), val0) == 0 {
 		t.Fatal("scenario 3: synchronous equivocation left no evidence")
